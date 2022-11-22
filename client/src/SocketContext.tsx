@@ -8,17 +8,28 @@ import React, {
 import { io } from "socket.io-client";
 import Peer, { SignalData } from "simple-peer";
 
-export const SocketContext = createContext<{} | null>(null);
-
-const socket = io("https://localhost:5000");
+const socket = io("http://localhost:5000");
 
 interface IProps extends PropsWithChildren {}
 
 type Stream = MediaStream | undefined;
 
-interface IVideoRef {
-  srcObject: Stream;
+interface Context {
+  call?: ICall | null;
+  callAccepted?: boolean;
+  name?: string;
+  setName?: React.Dispatch<React.SetStateAction<string>>;
+  stream?: MediaStream;
+  callEnded?: boolean;
+  me?: string;
+  myStream?: MediaStream;
+  userStream?: MediaStream;
+  callUser?: (id: string) => void;
+  answerCall?: () => void;
+  leaveCall?: () => void;
 }
+
+export const SocketContext = createContext<Context>({});
 
 interface ICall {
   isReceivingCall: boolean;
@@ -29,18 +40,13 @@ interface ICall {
 
 const ContextProvider: React.FC<IProps> = ({ children }) => {
   const [stream, setStream] = useState<Stream>(undefined);
+  const [myStream, setMyStream] = useState<Stream>(undefined);
+  const [userStream, setUserStream] = useState<Stream>(undefined);
   const [me, setMe] = useState("");
   const [call, setCall] = useState<ICall | null>(null);
   const [callAccepted, setCallAccepted] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
   const [name, setName] = useState("");
-  const myVideoRef = useRef<IVideoRef>({
-    srcObject: undefined,
-  });
-  const userVideoRef = useRef<IVideoRef>({
-    srcObject: undefined,
-  });
-
   const connectionRef = useRef<Peer.Instance | null>(null);
 
   useEffect(() => {
@@ -48,7 +54,7 @@ const ContextProvider: React.FC<IProps> = ({ children }) => {
       .getUserMedia({ video: true, audio: true })
       .then((currentStream) => {
         setStream(currentStream);
-        myVideoRef.current!.srcObject = currentStream;
+        setMyStream(currentStream);
       });
 
     socket.on("me", (id) => {
@@ -74,7 +80,7 @@ const ContextProvider: React.FC<IProps> = ({ children }) => {
     });
 
     peer.on("stream", (currentStream) => {
-      userVideoRef.current!.srcObject = currentStream;
+      setUserStream(currentStream);
     });
 
     peer.signal(call!.signal);
@@ -98,7 +104,7 @@ const ContextProvider: React.FC<IProps> = ({ children }) => {
     });
 
     peer.on("stream", (currentStream) => {
-      userVideoRef.current!.srcObject = currentStream;
+      setUserStream(currentStream);
     });
 
     socket.on("callaccepted", (signal) => {
@@ -121,8 +127,6 @@ const ContextProvider: React.FC<IProps> = ({ children }) => {
       value={{
         call,
         callAccepted,
-        myVideoRef,
-        userVideoRef,
         name,
         setName,
         stream,
@@ -131,6 +135,8 @@ const ContextProvider: React.FC<IProps> = ({ children }) => {
         callUser,
         answerCall,
         leaveCall,
+        myStream,
+        userStream,
       }}
     >
       {children}
