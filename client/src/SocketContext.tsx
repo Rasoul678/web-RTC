@@ -8,7 +8,7 @@ import React, {
 import { io } from "socket.io-client";
 import Peer, { SignalData } from "simple-peer";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://web-rtc-io.onrender.com");
 
 interface IProps extends PropsWithChildren {}
 
